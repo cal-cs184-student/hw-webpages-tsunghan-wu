@@ -53,11 +53,6 @@
 		<h2>Task 1: Drawing Single-Color Triangles</h2>
 		In this task, we implemented a basic triangle rasterization routine. In <code>void RasterizerImp::rasterize_triangle</code>, we first compute the triangle’s bounding box (a rectangle that covers the triangle). Then, for each point inside that region, we perform the three-line inside-triangle test (ref: Lecture 2 slides). We structured this logic using two helper functions: <code>is_inside_check</code> and <code>check_line</code>.
 
-		One important detail is the homework requirement that points on the triangle edges should be treated as inside the triangle. To handle this, we used the following condition:
-		<pre><code>if (line0_dot &gt;= 0 &amp;&amp; line1_dot &gt;= 0 &amp;&amp; line2_dot &gt;= 0) {
-  return 1;
-}</code></pre>
-
 		That’s essentially it for this task. We did not implement the extra-credit optimizations, so the algorithm simply iterates over all points in the bounding box and checks whether each one is inside the triangle.
 
 		The two requested PNG files are shown below. We can see that <code>basic/test.svg</code> renders successfully (a), but when zooming in, artifacts are visible because we are not yet using superpixels for anti-aliasing (b). We address this issue in the next task.
@@ -133,24 +128,87 @@
 
 
 		<h2>Task 5: "Pixel sampling" for texture mapping</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		The goal of pixel sampling is to decide which color in the source <i>texture space</i> should be assigned to each sample in the rendered image. Since mapping from screen space to texture space is generally not one-to-one, different sampling strategies can produce noticeably different visual quality, especially when the texture contains high-frequency details. In our implementation, we first reuse the barycentric-coordinate computation from Task 4 to obtain the <code>(u, v)</code> texture coordinate for each sub-sample inside <code>rasterize_textured_triangle</code>. We then  pass it to the sampling routines based on different pixel sampling mechanism in <code>texture.cpp</code>. Pixel sampling supports two modes:
+		<ul>
+		  <li><b>Nearest sampling</b>: map <code>(u, v)</code> to the closest texel and return that texel’s color.</li>
+		  <li><b>Bilinear sampling</b>: locate the continuous texel-space position, fetch the four neighboring texels, and perform LERP along <code>x</code> and <code>y</code> to produce a smoother result.</li>
+		</ul>
+
+		An example is shown below. Here we map an example high-resolution map (2058×1036) onto a relatively small SVG. With <b>Nearest</b> sampling and <code>sample_rate = 1</code> (a), aliasing becomes severe around high-frequency features (e.g., fine text such as latitude/longitude). This can be improved either by (1) sampling from multiple nearby texels (bilinear pixel sampling) or (2) increasing the supersampling rate so each pixel averages multiple sub-samples. As a result, (b) and (c) look cleaner than (a), and (d) produces the smoothest output.
+		</p>
+
+		<div style="display: flex; flex-direction: column; align-items: center;">
+		  <table style="width: 100%; text-align: center; border-collapse: collapse;">
+		    <tr>
+		      <td style="text-align: center;">
+		        <img src="pics/task5_nearest_sr1.png" width="400px"/>
+		        <figcaption>(a) Nearest, Sample Rate = 1.</figcaption>
+		      </td>
+		      <td style="text-align: center;">
+		        <img src="pics/task5_nearest_sr16.png" width="400px"/>
+		        <figcaption>(b) Nearest, Sample Rate = 16.</figcaption>
+		      </td>
+		    </tr>
+		    <tr>
+		      <td style="text-align: center;">
+		        <img src="pics/task5_bilinear_sr1.png" width="400px"/>
+		        <figcaption>(c) Bilinear, Sample Rate = 1.</figcaption>
+		      </td>
+		      <td style="text-align: center;">
+		        <img src="pics/task5_bilinear_sr16.png" width="400px"/>
+		        <figcaption>(d) Bilinear, Sample Rate = 16.</figcaption>
+		      </td>
+		    </tr>
+		  </table>
+		</div>
 
 		<h2>Task 6: "Level Sampling" with mipmaps for texture mapping</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-<!-- 		<h2>(Optional) Task 7: Extra Credit - Draw Something Creative!</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. -->
-
-		<!-- <h2>Additional Notes (please remove)</h2>
+		In this task, we implement mipmapping and level sampling. The main idea is to preprocess the texture into a multi-level pyramid (level 0 is the original image, level 1 is downsampled by 2, and so on). During rendering, we estimate how much the texture coordinates change per screen pixel; that rate of change determines which mip level should be used. Compared to Task 5, the pixel sampling logic (nearest vs bilinear within a level) remains the same, but we additionally select the appropriate level before sampling. Following the spec, we compute the barycentric texture coordinates for three screen-space positions: <code>(x, y)</code>, <code>(x+1, y)</code>, and <code>(x, y+1)</code>. These three UVs become <code>sp.p_uv</code>, <code>sp.p_dx_uv</code>, and <code>sp.p_dy_uv</code>, respectively. In <code>texture.cpp</code>, <code>get_level(sp)</code> uses the differences <code>(sp.p_dx_uv - sp.p_uv)</code> and <code>(sp.p_dy_uv - sp.p_uv)</code>, scaled by texture resolution, and then take the maximum L2 norm of these two differential vectors and compute a clamped <code>log2</code> to obtain the mip level. We support three level-sampling strategies:
 		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
-		</ul> -->
+		  <li><b>L_ZERO</b>: always sample from mip level 0 (equivalent to Task 5 behavior).</li>
+		  <li><b>L_NEAREST</b>: sample from the nearest integer mip level returned by <code>get_level</code>.</li>
+		  <li><b>L_LINEAR</b>: sample from the two neighboring mip levels and linearly interpolate between them.</li>
+		</ul>
+
+
+		With level sampling, we now have three level-sampling strategies, two pixel-sampling strategies, and multiple supersampling settings. Each technique trades compute/memory for improved antialiasing:
+		<ul>
+		  <li><b>Supersampling</b> increases both computation and sample-buffer storage by a factor of <code>sample_rate</code>.</li>
+		  <li><b>Bilinear pixel sampling</b> costs ~4 texel fetches per sample (vs 1 for nearest).</li>
+		  <li><b>Mipmapping</b> increases texture storage by less than 2× overall (since <code>1 + 1/4 + 1/16 + ... &lt; 2</code>) and adds extra work to estimate the mip level (computing UV at <code>x+1</code> and <code>y+1</code>).</li>
+		  <li><b>L_LINEAR</b> (level interpolation) requires sampling from two mip levels and interpolating between them. Therefore, it can be 2x the compute compared to L_NEAREST</li>
+		</ul>
+
+
+		We use an NYC skycrapers as an example image as it contains a lot of high-frequency textures and thus can easily show the differnces between different methods. As shown below, using a non-zero level-sampling strategy improves visual quality, and bilinear pixel sampling further smooths the results. The zoomed-in region highlights the building window area: combining mipmapping with bilinear sampling produces cleaner and more stable edges, while using only one technique yields intermediate quality. The worst case is sampling directly from level 0 without additional antialiasing techniques.
+
+		<div style="display: flex; flex-direction: column; align-items: center;">
+		  <table style="width: 100%; text-align: center; border-collapse: collapse;">
+		    <tr>
+		      <td style="text-align: center;">
+		        <img src="pics/task6_l_0_p_nearest.png" width="400px"/>
+		        <figcaption>(a) L_ZERO + P_NEAREST</figcaption>
+		      </td>
+		      <td style="text-align: center;">
+		        <img src="pics/task6_l_0_p_linear.png" width="400px"/>
+		        <figcaption>(b) L_ZERO + P_LINEAR</figcaption>
+		      </td>
+		    </tr>
+		    <tr>
+		      <td style="text-align: center;">
+		        <img src="pics/task6_l_nearest_p_nearest.png" width="400px"/>
+		        <figcaption>(c) L_NEAREST + P_NEAREST</figcaption>
+		      </td>
+		      <td style="text-align: center;">
+		        <img src="pics/task6_l_nearest_p_linear.png" width="400px"/>
+		        <figcaption>(d) L_NEAREST + P_LINEAR</figcaption>
+		      </td>
+		    </tr>
+		  </table>
+		</div>
+
+		<h2>Additional Notes: LLM Disclosure</h2>
+		We used Cursor IDE during development, so autocomplete was occasionally applied. We also used an LLM to refine the wording in this write-up. However, the student completed the homework independently without using prior homework solutions or online resources. The student is responsible for all submitted code and write-up content.
 		</div>
 	</body>
 </html>
