@@ -123,7 +123,14 @@
 		</div>
 
 		<h2>Task 4: Barycentric coordinates</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		To implement this task, I reused the same structure as triangle rasterization: compute a bounding box for the triangle, iterate over pixels (and sub-pixel samples when supersampling is enabled), and then determine whether each point lies inside the triangle or not. For samples that are inside, I compute barycentric weights using an area/edge-function form (solving for <code>&alpha;</code> and <code>&beta;</code>, then <code>&gamma; = 1 - &alpha; - &beta;</code>). The detailed formula is in the lecture slide. Finally, I interpolate the color by weighting the three vertex colors. It is worth mentioning that I added a small <code>eps</code> term in the barycentric denominators to reduce numerical instability near edges (e.g., when the denominator is extremely small due to floating point precision). This helps make the interpolation more stable at boundaries. Below is the requested screenshot of <code>svg/basic/test7.svg</code> with default viewing parameters and <code>sample_rate = 1</code>.
+
+
+		<figure>
+			<img src="pics/task4.png" alt="Lion" style="width:50%"/>
+			<figcaption>Task 4's Color Palette</figcaption>
+		</figure>
+
 
 		<h2>Task 5: "Pixel sampling" for texture mapping</h2>
 		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
