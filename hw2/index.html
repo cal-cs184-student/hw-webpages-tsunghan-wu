@@ -48,7 +48,7 @@
 		-->
 
 		<h2>Overview</h2>
-		TODO.
+		The assignment has two main sections. The first section helps us understand how to use the de Casteljau algorithm to implement Bezier curves and surfaces. The second section is all about the meshes, including average normal, edge flip/slip, and then the loop subdivision algorithm.
 
 		<h2>Section I: Bezier Curves and Surfaces</h2>
 
@@ -189,21 +189,125 @@
 		</div>
 
 		<h3>Part 6: Loop subdivision for mesh upsampling</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		This is probably the most complicated part of this homework. Basically, the 4-1 subdivision alrogithm aims to make the mesh smoother by adding more vertices on the edges. The process is as follows: (1) adding new vertices (computing the location of new vertices) and updating the positions of the original vertices; this is a bit tricky because it's not just adding new vertices but also updating the old ones. (2) Before adding new vertices, we need to first split the edges (creating 4 triangles from each original edge) and then doing edge flipping (all edges connecting old and new vertices) to ensure great connectivity. (3) Finally, we put the already saved, pre-computed new vertices positions back to the right place and reset all members like <code>valence</code> and <code>isNew</code> to false. The most difficult part is to calculate the new vertices but the assignment description has already provided the formula for the weights so we just implemented accordingly. Results are shown below.
 
-		<h2>(Optional) Section III: Potential Extra Credit - Art Competition: Model something Creative</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
-		<h2>Additional Notes (please remove)</h2>
-		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
-		</ul>
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj0_iters0.png" width="400px"/>
+			  <figcaption>Obj0 - Iteration 0</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj1_iters0.png" width="400px"/>
+			  <figcaption>Obj1 - Iteration 0</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj0_iters1.png" width="400px"/>
+			  <figcaption>Obj0 - Iteration 1</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj1_iters1.png" width="400px"/>
+			  <figcaption>Obj1 - Iteration 1</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj0_iters2.png" width="400px"/>
+			  <figcaption>Obj0 - Iteration 2</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj1_iters2.png" width="400px"/>
+			  <figcaption>Obj1 - Iteration 2</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj0_iters3.png" width="400px"/>
+			  <figcaption>Obj0 - Iteration 3</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj1_iters3.png" width="400px"/>
+			  <figcaption>Obj1 - Iteration 3</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj0_iters4.png" width="400px"/>
+			  <figcaption>Obj0 - Iteration 4</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/sec2/part6/obj1_iters4.png" width="400px"/>
+			  <figcaption>Obj1 - Iteration 4</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
+	
+
+<br/>
+
+		As mentioned above, the subdivision is an algorithm for mesh smoothing so sharp corners get smoothed/rounded after applying that and sharp edges become curved after multiple iterations. To reduce this effort, doing pre-splitting edges newar corners can definitely help. The reason is that we just provided more vertices near these spaces so each vertex has more neighbors now. Tgerefore, the average has less smoothing effect (the u weight decreases as degree n increases: u = 3/(8n)). However, this is not a perfect solution cuz loop subdivision will eventually smoothen these areas.
+
+		<br/>
+		<br/>
+
+		When loading the default cube mesh and applying the subdivision, the cube becomes asymmetric because the mesh itself has an asymmetric topology even though it looks symmetric geometrically. Specifically, each face of the cube is split by only one diagonal edge into two triangles and they may not all go in consistent directions. Therefore, in the subdivision algorithm, vertices along these diagonal are weighted differently, resulting in asymmetry meshes. To resolve this issue, we can just do pre-splitting for each face to two diagonal edges (X-pattern on each face) such that the mesh becomes topologically symmetric. 
+
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: auto; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj1_iters0.png" width="300px"/>
+			  <figcaption>Original - Iteration 0</figcaption>
+			</td>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj3_iters0.png" width="300px"/>
+			  <figcaption>Pre-split - Iteration 0</figcaption>
+			</td>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj2_iters0.png" width="300px"/>
+			  <figcaption>Asymmetric - Iteration 0</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj1_iters2.png" width="300px"/>
+			  <figcaption>Original - Iteration 2</figcaption>
+			</td>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj3_iters2.png" width="300px"/>
+			  <figcaption>Pre-split - Iteration 2</figcaption>
+			</td>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj2_iters2.png" width="300px"/>
+			  <figcaption>Asymmetric - Iteration 2</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj1_iters4.png" width="300px"/>
+			  <figcaption>Original - Iteration 4</figcaption>
+			</td>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj3_iters4.png" width="300px"/>
+			  <figcaption>Pre-split - Iteration 4</figcaption>
+			</td>
+			<td style="text-align: center; padding: 2px;">
+			  <img src="pics/sec2/part6/obj2_iters4.png" width="300px"/>
+			  <figcaption>Asymmetric - Iteration 4</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+
+		<h2>Additional Notes: LLM Disclosure</h2>
+		We used Cursor IDE during development, so autocomplete was occasionally applied. We also used an LLM to refine the wording in this write-up. However, the student completed the homework independently without using prior homework solutions or online resources. The student is responsible for all submitted code and write-up content.
+
 		</div>
 	</body>
 </html>
