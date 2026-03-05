@@ -52,8 +52,12 @@
 
 		<h2>Section I: Bezier Curves and Surfaces</h2>
 
-		<h3>Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
-		In this part, the implementation is straigntforward as the algorithm. We just first return the point if the input is only one control point. Otherwise, we run the for loop to push back the lerp (liner interpolation) of the neighboring two points. Then, I created a test case with 6 control points (0.15, 0.25), (0.35, 0.70), (0.50, 0.85), (0.65, 0.40), (0.80, 0.65), and (0.95, 0.30). As we have 6 points, the algorithm would generate 5 intermediate steps. These steps and the final Bezier curve are shown below.
+	<h3>Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
+	The de Casteljau algorithm is a recursive method for evaluating Bezier curves by repeatedly performing linear interpolation between consecutive control points. At each step, given n control points and a parameter t (between 0 and 1), the algorithm generates n-1 intermediate points by linearly interpolating between each pair of adjacent points. This process continues recursively until a single point remains, which lies on the final Bezier curve at parameter t. By varying t from 0 to 1, we can trace out the entire curve.
+	
+	<br><br>
+	
+	In this part, the implementation is straigntforward as the algorithm. We just first return the point if the input is only one control point. Otherwise, we run the for loop to push back the lerp (liner interpolation) of the neighboring two points. Then, I created a test case with 6 control points (0.15, 0.25), (0.35, 0.70), (0.50, 0.85), (0.65, 0.40), (0.80, 0.65), and (0.95, 0.30). As we have 6 points, the algorithm would generate 5 intermediate steps. These steps and the final Bezier curve are shown below.
 
 		<div style="display: flex; flex-direction: column; align-items: center;">
 			<table style="width: 100%; text-align: center; border-collapse: collapse;">
@@ -110,7 +114,7 @@
 		</div>
 		<br>
 
-		Here are results with different values of t.
+		Here are results with different values of t. As mentioned above, all points ranging from 0 to 1 are on the final Bezier curve.
 
 		<div style="display: flex; flex-direction: column; align-items: center;">
 			<table style="width: 100%; text-align: center; border-collapse: collapse;">
