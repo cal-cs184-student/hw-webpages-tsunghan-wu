@@ -168,7 +168,25 @@
 		</div>
 
 		<h3>Part 5: Edge split</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		The implementation of this task is really similar to part 4. First, we get all a, b, c, d vertices, edges, half-edges, and faces out. Then, for the new vertex <code>m</code>, the position is the average of b and c. After that, create 3 new edges, 6 more half-edges, and then 2 new faces. Finally, we set the neighbors for all half-edges, and setup all halfedges for edge, vertices, and faces. The debugging process is the same as part 4 where we rendered it out and see if the results are as expected.
+
+
+
+		Here's the result of before and after edge splits.
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<img src="pics/sec2/part5/before.png" width="800px"/>
+			<figcaption>(a) The original mesh.</figcaption>
+			<img src="pics/sec2/part5/edge_split.png" width="800px"/>
+			<figcaption>(b) The mesh after one edge split (as you can see the X-shape).</figcaption>
+		</div>
+
+		Here's the result of a mesh before and after a combination of edge splits and flips.
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<img src="pics/sec2/part5/before.png" width="800px"/>
+			<figcaption>(a) The original mesh.</figcaption>
+			<img src="pics/sec2/part5/edge_split_flip.png" width="800px"/>
+			<figcaption>(b) The mesh after a combination of edge splits and flips (as shown in the center of the image, a flip and a split).</figcaption>
+		</div>
 
 		<h3>Part 6: Loop subdivision for mesh upsampling</h3>
 		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
