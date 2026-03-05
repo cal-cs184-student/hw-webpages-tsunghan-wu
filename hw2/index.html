@@ -27,62 +27,125 @@
 	</head>
 	<body>
 		<div class="container">
-		<h1>CS184/284A Spring 2025 Homework 2 Write-Up</h1>
-		<div style="text-align: center;">Names: </div>
+		<h1>CS184/284A Spring 2026 Homework 2 Write-Up</h1>
+		<div style="text-align: center;">Names: Patrick (Tsung-Han) Wu</div>
 
 		<br>
 
-		Link to webpage: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
+		Link to webpage: <a href="https://cal-cs184-student.github.io/hw-webpages-tsunghan-wu/hw2/index.html">https://cal-cs184-student.github.io/hw-webpages-tsunghan-wu/hw2/index.html</a>
 
 		<br>
 		
-		Link to GitHub repository: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
+		Link to GitHub repository: <a href="https://github.com/cal-cs184-student/hw2-meshedit-tomay-cat">https://github.com/cal-cs184-student/hw2-meshedit-tomay-cat</a>
 
-		<figure>
+		<!-- <figure>
 			<img src="teapot.png" alt="Teapot" style="width:50%"/>
 			<figcaption>You can add images with captions!</figcaption>
-		</figure>
+		</figure> -->
 
 		<!--
 		We've already added one heading per part, to make your write-up as navigable when grading. Please fit your write-up within these sections!
 		-->
 
 		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
+		TODO.
 
 		<h2>Section I: Bezier Curves and Surfaces</h2>
 
 		<h3>Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		In this part, the implementation is straigntforward as the algorithm. We just first return the point if the input is only one control point. Otherwise, we run the for loop to push back the lerp (liner interpolation) of the neighboring two points. Then, I created a test case with 6 control points (0.15, 0.25), (0.35, 0.70), (0.50, 0.85), (0.65, 0.40), (0.80, 0.65), and (0.95, 0.30). As we have 6 points, the algorithm would generate 5 intermediate steps. These steps and the final Bezier curve are shown below.
 
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
 		<div style="display: flex; flex-direction: column; align-items: center;">
 			<table style="width: 100%; text-align: center; border-collapse: collapse;">
 			  <tr>
 				<td style="text-align: center;">
-				  <img src="teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="pics/sec1/part1/curve3_e1.png" width="400px"/>
+				  <figcaption>(a) Intermediate steps (Step 1).</figcaption>
 				</td>
 				<td style="text-align: center;">
-				  <img src="teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="pics/sec1/part1/curve3_e2.png" width="400px"/>
+				  <figcaption>(b) Intermediate steps (Step 2).</figcaption>
 				</td>
 			  </tr>
 			  <tr>
 				<td style="text-align: center;">
-				  <img src="teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="pics/sec1/part1/curve3_e3.png" width="400px"/>
+				  <figcaption>(c) Intermediate steps (Step 3).</figcaption>
 				</td>
 				<td style="text-align: center;">
-				  <img src="teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="pics/sec1/part1/curve3_e4.png" width="400px"/>
+				  <figcaption>(d) Intermediate steps (Step 4).</figcaption>
+				</td>
+			  </tr>
+			  <tr>
+				<td style="text-align: center;">
+				  <img src="pics/sec1/part1/curve3_e5.png" width="400px"/>
+				  <figcaption>(e) Intermediate steps (Step 5).</figcaption>
+				</td>
+				<td style="text-align: center;">
+				  <img src="pics/sec1/part1/curve3_e6_c.png" width="400px"/>
+				  <figcaption>(f) Final Bezier curve.</figcaption>
 				</td>
 			  </tr>
 			</table>
 		</div>
 
+		<br>
+
+		As requested, I also add a sample where I dragged and changed the initial control points a bit as shown below.
+
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="pics/sec1/part1/curve3_e5.png" width="400px"/>
+						<figcaption>(a) Original Control Points with all levels (t = 0.5).</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="pics/sec1/part1/curve4_e5__t05.png" width="400px"/>
+						<figcaption>(b) Modified Control Points with all levels (t = 0.5).</figcaption>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<br>
+
+		Here are results with different values of t.
+
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="pics/sec1/part1/curve4_e5_c_t000.png" width="400px"/>
+						<figcaption>(a) Modified Control Points with all levels and Bezier curve (t = 0.0).</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="pics/sec1/part1/curve4_e5_c_t025.png" width="400px"/>
+						<figcaption>(b) Modified Control Points with all levels and Bezier curve (t = 0.25).</figcaption>
+					</td>
+				</tr><tr>
+					<td style="text-align: center;">
+						<img src="pics/sec1/part1/curve4_e5_c_t050.png" width="400px"/>
+						<figcaption>(c) Modified Control Points with all levels and Bezier curve (t = 0.5).</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="pics/sec1/part1/curve4_e5_c_t075.png" width="400px"/>
+						<figcaption>(d) Modified Control Points with all levels and Bezier curve (t = 0.75).</figcaption>
+					</td>
+				</tr><tr>
+					<td style="text-align: center;">
+						<img src="pics/sec1/part1/curve4_e5_c_t100.png" width="400px"/>
+						<figcaption>(e) Modified Control Points with all levels and Bezier curve (t = 1.0).</figcaption>
+					</td>
+				</tr>
+			</table>
+		</div>
+
 		<h3>Part 2: Bezier surfaces with separable 1D de Casteljau</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		The extenstion to the surface is just doing the same things twice. In the first pass, we apply the de Casteljau algorithm along each row of control points using parameter u, producing intermediate points. Then, in the second pass, we follow the parameter v to producing the final surface points. This logic is implemented in the "evaluate" function. The evaluateStep function performs one interpolation step in 3D space, similar to the Part 1 but using Vector3D. The evaluate1D is an intermediate function that applies the de Casteljau algorithm to a single dimension (either u or v) using the evaluateStep function. The resulting screenshot of the teapot is shown below.
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<img src="pics/sec1/part2/teapot.png" width="400px"/>
+		</div>
 
 		<h2>Section II: Triangle Meshes and Half-Edge Data Structure</h2>
 
