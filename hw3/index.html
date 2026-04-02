@@ -27,17 +27,17 @@
 	</head>
 	<body>
 		<div class="container">
-		<h1>CS184/284A Spring 2025 Homework 3 Write-Up</h1>
-		<div style="text-align: center;">Names: </div>
+		<h1>CS184/284A Spring 2026 Homework 3 Write-Up</h1>
+		<div style="text-align: center;">Names: Patrick (Tsung-Han) Wu</div>
 
 		<br>
 
-		Link to webpage: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
-		Link to GitHub repository: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
+		Link to webpage: (TODO) <a href="https://cal-cs184-student.github.io/hw-webpages-tsunghan-wu/hw3/index.html">https://cal-cs184-student.github.io/hw-webpages-tsunghan-wu/hw3/index.html</a>
+		Link to GitHub repository: (TODO) <a href="https://github.com/cal-cs184-student/hw3-pathtracer-tomay-hw3">https://github.com/cal-cs184-student/hw3-pathtracer-tomay-hw3</a>
 		
 		<figure>
 			<img src="cornell.png" alt="Cornell Boxes with Bunnies" style="width:70%"/>
-			<figcaption>You can add images with captions!</figcaption>
+			<figcaption>HW3 is hard T_T!</figcaption>
 		</figure>
 
 		<!--
@@ -45,36 +45,94 @@
 		-->
 
 		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
+		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework. (TBD)
 
 		<h2>Part 1: Ray Generation and Scene Intersection</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<h3>The pipeline of ray generation and primitive intersection is as follows:</h3>
+			<ul>
+			<li>
+				<strong>High-level idea:</strong> For each pixel <code>(x, y)</code>, we generate rays according to the camera parameters. Then, we solve for the intersection between the ray and the primitive surface (either a triangle or a sphere in this assignment). In this way, we can accumulate the radiance along the ray and assign the correct pixel color.
+			</li>
+			<li>
+				Below is the low-level decomposition.
+				<ol>
+				<li>
+					For each pixel <code>(x, y)</code>, we call <code>raytrace_pixel(x, y)</code> (in <code>src/pathtracer/pathtracer.cpp</code>).
+				</li>
+				<li>
+					For each pixel, we take multiple samples (<code>ns_aa</code>) using the sampler (in Part 1, we use the pre-implemented <code>GridSampler</code>) to obtain random offsets <code>(dx, dy)</code>. After that, we normalize the coordinates using the height and width to ensure the outputs are within <code>[0, 1]</code>.
+				</li>
+				<li>
+					Then, we call the <code>generate_ray()</code> function, which we are asked to implement in Part 1.1 (<code>src/pathtracer/camera.cpp</code>). First, we perform a series of 2D coordinate conversions (e.g., FOV, tangent, and normalization). Then, we compute the vector from the camera center to <code>(x, y, -1)</code> as the ray in camera space. After that, we multiply it by the <code>c2w</code> camera matrix. Once projected into world space, we apply normalization and clipping settings as described in the homework spec. The output of this step is a ray defined in world space.
+				</li>
+				<li>
+					Next, we call <code>est_radiance_global_illumination(Ray)</code>, which triggers <code>bvh-&gt;intersect(ray, &amp;isect)</code>. Here, we need to check whether the ray hits any primitive (triangles or spheres). Note that checking every primitive is inefficient, and we will address this issue in Part 2.
+				</li>
+				<li>
+					At this point, we need to implement both the triangle intersection test and the sphere intersection test. For triangles, we use the Möller-Trumbore algorithm (which we will explain in the following part of the report), and for spheres, we solve a quadratic equation.
+				</li>
+				<li>
+					If there is an intersection, we record the BSDF and the normal at the intersection point. In Part 1, we do not yet fully accumulate radiance, since the current return value is simply <code>normal_shading(isect.n)</code>.
+				</li>
+				</ol>
+			</li>
+			<li>
+				At this stage, we have completed the core part of the rendering pipeline. We will add acceleration in Part 2, illumination in Parts 3 and 4, and update the sampler in Part 5.
+			</li>
+			</ul>
 
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
-		<div style="display: flex; flex-direction: column; align-items: center;">
-			<table style="width: 100%; text-align: center; border-collapse: collapse;">
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			</table>
-		</div>
+			<h3>Implementation of the triangle intersection algorithm</h3>
+
+			<p>
+			All of the implementation is in <code>src/scene/triangle.cpp</code>. Following Lecture 13, we use the Möller-Trumbore algorithm to test whether there is an intersection between a ray <code>O + tD</code> and a triangle plane parameterized as <code>(1 - b1 - b2)P0 + b1P1 + b2P2</code>. The implementation is in my helper function <code>bool Triangle::test(const Ray &amp;r, double &amp;t, double &amp;b1, double &amp;b2)</code>.
+			</p>
+
+			<p>
+			In the normal case, we can solve for <code>t</code>, <code>b1</code>, and <code>b2</code> by computing <code>E1</code>, <code>E2</code>, <code>S</code>, <code>S1</code>, and <code>S2</code>, and then following the standard derivation. However, there are several special cases we need to handle carefully:
+			</p>
+
+			<ol>
+			<li>
+				If the divisor <code>dot(S1, E1)</code> is close to zero (e.g., less than <code>1e-8</code>), the ray is effectively parallel to the triangle plane, so there is no intersection.
+			</li>
+			<li>
+				If the resulting <code>b1</code> or <code>b2</code> is smaller than zero, or if <code>b1 + b2 &gt; 1</code>, then the ray does not hit the triangle.
+			</li>
+			<li>
+				If the resulting <code>t</code> is outside the clipped range, we also treat it as a no-intersection case.
+			</li>
+			</ol>
+
+			<h3>Here are some screenshot results after finishing Part 1</h3>
+
+			<p>
+			At this stage, the color is still based on normal shading, and the rendering is slow because we have not yet implemented the later parts. This is the command I used to get the screenshot: <code>./pathtracer -r 800 600 -f image_filename.png dae_filename.dae</code>
+			</p>
+
+			<div style="display: flex; flex-direction: column; align-items: center;">
+				<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+					<img src="pics/part1/CBempty.png" width="400px"/>
+					<figcaption>dae/sky/CBempty.dae</figcaption>
+					</td>
+					<td style="text-align: center;">
+					<img src="pics/part1/CBspheres.png" width="400px"/>
+					<figcaption>dae/sky/CBspheres.dae</figcaption>
+					</td>
+				</tr>
+				<tr>
+					<td style="text-align: center;">
+					<img src="pics/part1/cow.png" width="400px"/>
+					<figcaption>dae/meshedit/cow.dae</figcaption>
+					</td>
+					<td style="text-align: center;">
+					<img src="pics/part1/Teapot.png" width="400px"/>
+					<figcaption>dae/meshedit/teapot.dae</figcaption>
+					</td>
+				</tr>
+				</table>
+			</div>
 		
 		<h2>Part 2: Bounding Volume Hierarchy</h2>
 		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
