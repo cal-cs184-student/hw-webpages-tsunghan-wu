@@ -20,8 +20,39 @@
 				display: inline-block;
 			}
 
-			body {
-				font-family: 'Inter', sans-serif;
+		body {
+			font-family: 'Inter', sans-serif;
+			line-height: 1.25;
+		}
+			report-table {
+				border-collapse: collapse;
+				width: 100%;
+				margin: 16px 0 24px 0;
+				font-size: 15px;
+				line-height: 1.4;
+			}
+
+			.report-table th,
+			.report-table td {
+				border: 1px solid #ccc;
+				padding: 10px 14px;
+				text-align: center;
+				vertical-align: middle;
+			}
+
+			.report-table th {
+				background-color: #f5f5f5;
+				font-weight: 600;
+			}
+
+			.report-table tbody tr:nth-child(even) {
+				background-color: #fafafa;
+			}
+
+			.report-table td:first-child,
+			.report-table th:first-child {
+				text-align: left;
+				white-space: nowrap;
 			}
 		</style>
 	</head>
@@ -54,7 +85,7 @@
 				<strong>High-level idea:</strong> For each pixel <code>(x, y)</code>, we generate rays according to the camera parameters. Then, we solve for the intersection between the ray and the primitive surface (either a triangle or a sphere in this assignment). In this way, we can accumulate the radiance along the ray and assign the correct pixel color.
 			</li>
 			<li>
-				Below is the low-level decomposition.
+				<strong>Low-level implementation:</strong>
 				<ol>
 				<li>
 					For each pixel <code>(x, y)</code>, we call <code>raytrace_pixel(x, y)</code> (in <code>src/pathtracer/pathtracer.cpp</code>).
@@ -135,12 +166,231 @@
 			</div>
 		
 		<h2>Part 2: Bounding Volume Hierarchy</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		
+		<h3>BVH construction implementation</h3>
+
+		<ul>
+		  <li>
+			<strong>Background:</strong> In Part 1, the implementation effectively uses a single large bounding box that contains all primitives and always returns true for ray-box intersection. As a result, the intersection cost is <code>O(#rays * #primitives)</code>, which becomes very slow when rendering scenes with a large number of primitives.
+		  </li>
+		  <li>
+			<strong>High-level idea:</strong> Instead of checking every primitive, we preconstruct a balanced tree-like data structure in advance, which takes roughly <code>O(#primitives * log #primitives)</code>. During intersection, we first test the ray against the bounding box at each node, and only perform detailed primitive intersection tests for the relevant leaf nodes. In this way, the overall intersection cost can be reduced to about <code>O(#rays * log #primitives)</code>.
+		  </li>
+		  <li>
+			<strong>Low-level implementation:</strong>
+			<ol>
+			  <li>
+				First, we implement the <code>construct_bvh()</code> function in Part 2.1. In the original code, the primitives are stored in a simple vector-like structure, and the function just returns the head of that list. Now, we instead construct a tree and return the root node. The main idea is that if there are fewer than <code>max_leaf_size</code> primitives (default = 4), we place them into a single leaf node, since that number is small enough to traverse directly. Otherwise, we split the node into two child nodes. The splitting strategy is as follows:
+				<ol>
+				  <li>
+					Find the axis with the largest extent among <code>x</code>, <code>y</code>, and <code>z</code>, and use the centroid along that axis as the splitting criterion.
+				  </li>
+				  <li>
+					Use <code>std::partition()</code> to divide the primitives around the midpoint. If the partition result is degenerate (that is, the midpoint ends up at the start or end, meaning all primitives lie on the same side), we manually reset the midpoint using the average extent along that axis.
+				  </li>
+				</ol>
+				After finding the midpoint, we recursively build the two subtrees:
+				<pre><code>node-&gt;l = construct_bvh(start, mid, max_leaf_size);
+node-&gt;r = construct_bvh(mid, end, max_leaf_size);</code></pre>
+				Overall, this construction process takes <code>O(#primitives * log #primitives)</code> time.
+			  </li>
+			  <li>
+				Then, during query time, we first check whether a ray intersects a node’s bounding box. If it does not, we can immediately skip that entire region. The bounding-box test works by computing the entry and exit times of the ray with respect to the slabs on each axis. If the valid time intervals across the three axes do not overlap, we return false; otherwise, we update the range to tighten the intersection bounds.
+			  </li>
+			  <li>
+				Finally, we implement BVH traversal for intersection. At the beginning of the function, we use the bounding-box check <code>node-&gt;bb.intersect(ray, t0, t1)</code>. If the node is a leaf node, we test all primitives inside it and update the BSDF and intersection record accordingly. If the node is an internal node, we recursively traverse both the left and right child nodes.
+			  </li>
+			</ol>
+		  </li>
+		</ul>
+		
+		<h3>Some screenshots on large <code>.dae</code> files and timing comparison</h3>
+		
+		<p>
+		  I ran the experiment on my own laptop (Apple M1 MacBook Air, 2020, 16 GB RAM, 8 CPU cores). The command I used to generate the images was:
+		</p>
+		
+		<pre><code>./pathtracer -t 8 -r 800 600 -f img_filename dae_filename</code></pre>
+		
+		<p>
+		  Below, I show the screenshots of some large .dae files.
+		</p>
+
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="pics/part2/beast_part2.png" width="250px"/>
+						<figcaption>dae/meshedit/beast.dae</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="pics/part2/dragon_part2.png" width="250px"/>
+						<figcaption>dae/sky/dragon.dae</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="pics/part2/maxplank_part2.png" width="250px"/>
+						<figcaption>dae/meshedit/maxplank.dae</figcaption>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		Here's the time comparison between the Part 1 script and the Part 2 acceleration.
+
+		<table class="report-table">
+			<thead>
+			  <tr>
+				<th>Scene</th>
+				<th># Primitives</th>
+				<th>Part 1 Time (s)</th>
+				<th>Part 2 Time (s)</th>
+				<th>Speedup</th>
+				<th>Part 1 Avg. Tests/Ray</th>
+				<th>Part 2 Avg. Tests/Ray</th>
+				<th>Reduction</th>
+			  </tr>
+			</thead>
+			<tbody>
+			  <tr>
+				<td>Cow</td>
+				<td>5856</td>
+				<td>11.3240</td>
+				<td>0.0390</td>
+				<td>290.4x</td>
+				<td>1618.77</td>
+				<td>4.01</td>
+				<td>403.3x</td>
+			  </tr>
+			  <tr>
+				<td>Teapot</td>
+				<td>2464</td>
+				<td>3.6890</td>
+				<td>0.0402</td>
+				<td>91.8x</td>
+				<td>704.52</td>
+				<td>3.91</td>
+				<td>180.3x</td>
+			  </tr>
+			  <tr>
+				<td>Banana</td>
+				<td>2458</td>
+				<td>4.5947</td>
+				<td>0.0284</td>
+				<td>161.8x</td>
+				<td>695.69</td>
+				<td>1.82</td>
+				<td>381.2x</td>
+			  </tr>
+			  <tr>
+				<td>Bunny</td>
+				<td>33696</td>
+				<td>89.3587</td>
+				<td>0.0403</td>
+				<td>2217.3x</td>
+				<td>10242.00</td>
+				<td>3.62</td>
+				<td>2826.4x</td>
+			  </tr>
+			</tbody>
+		  </table>
+
+		  Across all four scenes, Part 2 is much faster than Part 1, with speedups ranging from about 91.8x on the teapot scene to over 2200x on the bunny scene. This is also reflected in the average number of intersection tests per ray: in Part 1, each ray needs to test against hundreds or even tens of thousands of primitives, while after adding the BVH, this drops to only about 2 to 4 tests per ray. This shows that the BVH effectively prunes away most unnecessary primitive checks. Another interesting point is that, in Part 2, rendering time becomes much less sensitive to scene complexity. Even though the bunny has far more primitives than the teapot or banana, its rendering time stays in the same order of magnitude, which is consistent with the expected logarithmic behavior of BVH traversal.
+
 
 		<h2>Part 3: Direct Illumination</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
-		<h2>Part 4: Global Illumination</h2>
+		<h3>Direct lighting implementation</h3>
+
+		<ul>
+		  <li>
+			<strong>High-level idea:</strong> After Part 2, we can now do efficient ray tracing, so we know whether rays from each pixel hit a primitive or not. However, up to this point, we have only used synthetic normal shading as the output color. In Part 3, we turn on lighting and implement preliminary illumination, including both uniform hemisphere sampling and importance sampling.
+		  </li>
+		  <li>
+			<strong>Low-level implementation:</strong>
+			<ol>
+			  <li>
+				In Part 3.1, we implement the diffuse BSDF. Here, <code>f(w_out, w_in) = rho / pi</code>, and the process is straightforward: sample an incoming direction <code>w_in</code>, evaluate <code>f</code>, and use it in the lighting computation.
+			  </li>
+			  <li>
+				In Part 3.2, we handle the emission case, that is, when the ray directly hits a light source and there are no bounces involved. In this case, we simply return <code>isect.bsdf-&gt;get_emission();</code>
+			  </li>
+			  <li>
+				In task 3.3, we consider the case where light bounces off an object before reaching the camera. In this task, we implement uniform hemisphere sampling using Monte Carlo estimation in <code>estimate_direct_lighting_hemisphere()</code>. Specifically, we take <code>N</code> samples and average them. For each sample, we randomly sample an incoming light direction <code>w_i</code>, then check whether the corresponding shadow ray hits an emitting surface using <code>bvh-&gt;intersect(shadow_ray, &amp;light_isect)</code>. If it does, we compute the cosine term and follow the reflection equation from the homework spec to accumulate the outgoing radiance.
+			  </li>
+			  <li>
+				While the previous method works, many sampled directions contribute nothing because they do not hit a light source. Therefore, in the next task (3.4), we implement importance sampling. The main difference is that instead of sampling directions uniformly over the hemisphere, we sample directly from the light sources. For delta lights, we take one sample; for area lights, we take multiple samples. We use <code>light-&gt;sample_L</code> to sample a point on the light, then cast a shadow Ray. If the shadow ray is not blocked before reaching the light, we accumulate the corresponding outgoing radiance.
+			  </li>
+			</ol>
+		  </li>
+		</ul>
+	<h3>Screenshots for both methods</h3>
+	Please see the screenshots below (in the discussion of "Comparison between uniform hemisphere sampling and light sampling").
+
+	<h3>Noise level comparison for lighting sampling</h3>
+	
+	<p>
+	  To study the effect of the number of light samples, I rendered the same scene with an area light using <code>-s 1</code> and varying <code>-l</code> from <code>1</code>, <code>4</code>, <code>16</code>, to <code>64</code>. The general trend is clear: when the number of light rays is small, especially at <code>l = 1</code>, the soft shadow region is very noisy because each pixel only receives a very limited estimate of the incoming light. As we increase the number of light rays to <code>4</code> and <code>16</code>, the shadow becomes noticeably smoother and the variance is reduced. At <code>64</code> light rays, the soft shadow boundary is much cleaner and the image looks significantly more stable. Basically, increasing the number of light samples reduces the noise and gives a more accurate estimate of direct lighting (although it also increases rendering cost).
+	</p>
+	
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part3/dragon_I_1_1.png" width="400px"/>
+			  <figcaption>1 light ray per sample</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part3/dragon_I_1_4.png" width="400px"/>
+			  <figcaption>4 light rays per sample</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part3/dragon_I_1_16.png" width="400px"/>
+			  <figcaption>16 light rays per sample</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part3/dragon_I_1_64.png" width="400px"/>
+			  <figcaption>64 light rays per sample</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
+	
+	<h3>Comparison between uniform hemisphere sampling and light sampling</h3>
+	
+	<p>
+	  Comparing the two methods, light sampling performs much better than uniform hemisphere sampling for direct lighting. The main reason is that uniform hemisphere sampling wastes many samples on directions that do not hit any light source, so a large portion of the computation contributes nothing to the final estimate. As a result, the rendered image is usually noisier (low-quality) for the same sampling budget. In contrast, light sampling draws samples directly from the light sources, so most of the samples are actually useful. This makes the estimator much more efficient and produces cleaner soft shadows with fewer samples.
+	</p>
+	
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part3/CBbunny_H_32_32.png" width="400px"/>
+			  <figcaption>CBbunny - Hemisphere Sampling (32 samples per pixel, 32 light rays)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part3/CBbunny_I_32_32.png" width="400px"/>
+			  <figcaption>CBbunny - Importance Sampling (32 samples per pixel, 32 light rays)</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part3/CBspheres_lambertian_H_32_32.png" width="400px"/>
+			  <figcaption>CBspheres-lambertian - Hemisphere Sampling (32 samples per pixel, 32 light rays)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part3/CBspheres_lambertian_I_32_32.png" width="400px"/>
+			  <figcaption>CBspheres-lambertian - Importance Sampling (32 samples per pixel, 32 light rays)</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
+
+	<h2>Part 4: Global Illumination</h2>
 		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
 		<h2>Part 5: Adaptive Sampling</h2>
