@@ -63,8 +63,8 @@
 
 		<br>
 
-		Link to webpage: (TODO) <a href="https://cal-cs184-student.github.io/hw-webpages-tsunghan-wu/hw3/index.html">https://cal-cs184-student.github.io/hw-webpages-tsunghan-wu/hw3/index.html</a>
-		Link to GitHub repository: (TODO) <a href="https://github.com/cal-cs184-student/hw3-pathtracer-tomay-hw3">https://github.com/cal-cs184-student/hw3-pathtracer-tomay-hw3</a>
+		Link to webpage: <a href="https://cal-cs184-student.github.io/hw-webpages-tsunghan-wu/hw3/index.html">https://cal-cs184-student.github.io/hw-webpages-tsunghan-wu/hw3/index.html</a>
+		Link to GitHub repository: <a href="https://github.com/cal-cs184-student/hw3-pathtracer-tomay-hw3">https://github.com/cal-cs184-student/hw3-pathtracer-tomay-hw3</a>
 		
 		<figure>
 			<img src="cornell.png" alt="Cornell Boxes with Bunnies" style="width:70%"/>
@@ -75,8 +75,8 @@
 		We've already added one heading per part, to make your write-up as navigable when grading. Please fit your write-up within these sections!
 		-->
 
-		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework. (TBD)
+	<h2>Overview</h2>
+	The homework asked us to implement a physic-based path tracer for ray-tracing image rendering. Part 1 is the most basic ray tracing geneation and camera re-projection. Part 2 is then the acceleration with BVH data structure. Part 3 asked us to do direct light illumination. Part 4 extend it to indirect, multiple-bounced global illumination with recursive calls and Russian Roulette termination. The final part asked us to implemnt adaptive sampling for dynamic sample points allocation.
 
 		<h2>Part 1: Ray Generation and Scene Intersection</h2>
 		<h3>The pipeline of ray generation and primitive intersection is as follows:</h3>
@@ -391,24 +391,316 @@ node-&gt;r = construct_bvh(mid, end, max_leaf_size);</code></pre>
 	<br>
 
 	<h2>Part 4: Global Illumination</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+	
+	<h3>Global illumination implementation</h3>
+	
+	<ul>
+	  <li>
+		<strong>Background:</strong> In Part 3, we implemented direct lighting, which only accounts for light that travels directly from a light source to a surface and then to the camera (i.e., one bounce). However, in the real world, light bounces multiple times between surfaces before reaching the camera, creating indirect illumination effects such as color bleeding, soft ambient lighting, and realistic shadows. Part 4 extends our path tracer to handle these multiple bounces, implementing full global illumination.
+	  </li>
+	  <li>
+		<strong>High-level idea:</strong> The key is to implement recursive path tracing in <code>at_least_one_bounce_radiance()</code>. For each ray-surface intersection, we first compute the direct lighting contribution using <code>one_bounce_radiance()</code>. Then, we sample a new random direction from the BSDF, cast a bounce ray in that direction, and recursively call <code>at_least_one_bounce_radiance()</code> to gather indirect lighting. This recursion continues until we hit <code>max_ray_depth</code> or terminate early via Russian Roulette sampling. The main function <code>est_radiance_global_illumination()</code> orchestrates the process by handling edge cases for different <code>max_ray_depth</code> values and the <code>isAccumBounces</code> flag.
+	  </li>
+	  <li>
+		<strong>Low-level implementation:</strong>
+		<ol>
+		  <li>
+			In <code>est_radiance_global_illumination()</code>, we handle different cases based on <code>max_ray_depth</code>. For <code>m=0</code>, we return only zero-bounce radiance (emission). For <code>m=1</code>, we return emission plus one-bounce radiance if accumulated, or only one-bounce if not accumulated. For <code>m>=2</code>, we call <code>at_least_one_bounce_radiance()</code> to handle recursive bounces, either adding all bounces (accumulated mode) or filtering to show only the mth bounce (non-accumulated mode).
+		  </li>
+		  <li>
+			In <code>at_least_one_bounce_radiance()</code>, we first compute <code>L_out</code> as the one-bounce radiance. If we're in accumulated mode, we always include this direct lighting. In non-accumulated mode, we only include it if the current depth matches <code>max_ray_depth - 1</code>. Then, if the ray depth has not exceeded <code>max_ray_depth</code>, we apply Russian Roulette with continuation probability 0.65 to decide whether to trace further bounces. If we continue, we sample a new direction <code>wi</code> from the BSDF, create a bounce ray, and recursively call <code>at_least_one_bounce_radiance()</code>. The indirect contribution is then accumulated using the rendering equation: <code>L_out += bsdf_sample * indirect * cos_theta / (pdf * continuation_prob)</code>.
+		  </li>
+		  <li>
+			Russian Roulette is a variance reduction technique that probabilistically terminates rays early while keeping the estimator unbiased. By dividing by the continuation probability, we compensate for the rays that were terminated, ensuring the expected value remains correct. This significantly improves rendering efficiency by avoiding deep recursion for rays that contribute very little to the final image.
+		  </li>
+		</ol>
+	  </li>
+	</ul>
+	
+	<h3>Global illumination results</h3>
+	
+	<p>
+	  Below are images rendered with global illumination (combining both direct and indirect lighting) using 1024 samples per pixel. These images demonstrate the full physically-based rendering with multiple light bounces, producing realistic lighting, soft shadows, and color bleeding effects.
+	</p>
+	
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/bench.png" width="400px"/>
+			  <figcaption>Bench with global illumination (1024 samples per pixel)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_accum_m5.png" width="400px"/>
+			  <figcaption>CBbunny with global illumination, max_ray_depth=5 (1024 samples per pixel)</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
+	
+	<h3>Direct vs indirect illumination comparison</h3>
+	
+	<p>
+	  To understand the contributions of direct and indirect lighting, I rendered CBbunny.dae with only direct illumination and only indirect illumination separately, using 1024 samples per pixel. Direct illumination (m=0, m=1) shows only the light that comes directly from light sources, and those with one bounce (to surfaces and then to the camera), resulting in hard shadows and no light in occluded areas. The ceiling light source itself is visible as a bright white rectangle, and surfaces directly facing the light (like the top of the bunny) are well-lit, while occluded regions remain completely black.
+	</p>
+	
+	<p>
+	  Indirect illumination captures all the light bounces after the first one (m&gt;1), revealing the subtle color bleeding, soft shadows, and illumination in areas that are not directly visible to the light source. Notice how the bottom of the bunny, which receives no direct light, is now illuminated through light bouncing off the floor and walls. The color of the walls also bleeds onto nearby surfaces, creating a more natural and realistic appearance. The ceiling light itself appears black in the indirect-only view because we only see the light reflected off other surfaces, not the emission itself.
+	</p>
+	
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_only_direct.png" width="400px"/>
+			  <figcaption>CBbunny - Only direct illumination (1024 samples per pixel)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_only_indirect.png" width="400px"/>
+			  <figcaption>CBbunny - Only indirect illumination (1024 samples per pixel)</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
+	
+	<h3>Bounces of light visualization</h3>
+	
+	<p>
+	  Below are rendered views showing the mth bounce of light for CBbunny.dae with max_ray_depth from 0 to 5, using 1024 samples per pixel. The left column shows only the mth bounce (isAccumBounces=false), while the right column shows accumulated bounces from 0 to m (isAccumBounces=true).
+	</p>
+	
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_accum_m0.png" width="400px"/>
+			  <figcaption>Only m=0 (direct illumination)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_accum_m0.png" width="400px"/>
+			  <figcaption>Accumulated m=0</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_noaccum_m1.png" width="400px"/>
+			  <figcaption>Only m=1 (1st bounce)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_accum_m1.png" width="400px"/>
+			  <figcaption>Accumulated m=0-1</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_noaccum_m2.png" width="400px"/>
+			  <figcaption>Only m=2 (2nd bounce)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_accum_m2.png" width="400px"/>
+			  <figcaption>Accumulated m=0-2</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_noaccum_m3.png" width="400px"/>
+			  <figcaption>Only m=3 (3rd bounce)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_accum_m3.png" width="400px"/>
+			  <figcaption>Accumulated m=0-3</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_noaccum_m4.png" width="400px"/>
+			  <figcaption>Only m=4 (4th bounce)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_accum_m4.png" width="400px"/>
+			  <figcaption>Accumulated m=0-4</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_noaccum_m5.png" width="400px"/>
+			  <figcaption>Only m=5 (5th bounce)</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_accum_m5.png" width="400px"/>
+			  <figcaption>Accumulated m=0-5</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
+	
+	<h3>Analysis of 2nd and 3rd bounce contributions</h3>
+	
+	<p>
+	  Looking at the 2nd bounce (m=2) image, we can see that it captures indirect illumination where light bounces twice before reaching the camera. This bounce primarily illuminates areas that are not directly visible to the light source, such as the underside of the bunny and shadowed regions. The 2nd bounce adds subtle color bleeding effects and fills in dark areas that would otherwise be completely black with only direct lighting. Compared to traditional rasterization (which typically only handles direct lighting), this 2nd bounce significantly improves realism by softening hard shadows and revealing geometric details in indirectly lit regions.
+	</p>
+	
+	<p>
+	  The 3rd bounce (m=3) captures even more subtle indirect lighting effects. While the contribution is less pronounced than the 2nd bounce, it further refines the illumination in multiply-occluded areas and enhances color bleeding between surfaces. These higher-order bounces are nearly impossible to achieve efficiently with traditional rasterization techniques, which is why ray tracing produces more physically accurate and visually pleasing results, especially in scenes with complex geometry and indirect lighting scenarios.
+	</p>
+	
+	<h3>Russian Roulette rendering</h3>
+	
+	<p>
+	  Below are rendered views of CBbunny.dae with Russian Roulette termination enabled, using max_ray_depth values of 0, 1, 2, 3, 4, and 100, with 1024 samples per pixel. Russian Roulette is a variance reduction technique that allows rays to terminate probabilistically while maintaining an unbiased estimator. As we increase max_ray_depth, more light bounces are allowed, and the image becomes progressively brighter and more detailed. The difference between m=4 and m=100 is minimal, showing that most of the energy in the scene is captured within the first few bounces, and Russian Roulette effectively terminates rays that would contribute very little to the final image.
+	</p>
+	
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/russian_CBbunny_m0.png" width="300px"/>
+			  <figcaption>Russian Roulette m=0</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/russian_CBbunny_m1.png" width="300px"/>
+			  <figcaption>Russian Roulette m=1</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/russian_CBbunny_m2.png" width="300px"/>
+			  <figcaption>Russian Roulette m=2</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/russian_CBbunny_m3.png" width="300px"/>
+			  <figcaption>Russian Roulette m=3</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/russian_CBbunny_m4.png" width="300px"/>
+			  <figcaption>Russian Roulette m=4</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/russian_CBbunny_m100.png" width="300px"/>
+			  <figcaption>Russian Roulette m=100</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
+	
+	<h3>Sample-per-pixel rate analysis</h3>
+	
+	<p>
+	  To analyze the effect of the number of samples per pixel on rendering quality, I rendered CBbunny.dae with varying sample rates: 1, 2, 4, 8, 16, 64, and 1024 samples per pixel, using 4 light rays for each. As expected, with very few samples (s=1 or s=2), the image is extremely noisy because Monte Carlo estimation requires many samples to converge. As we increase the sample count to 4, 8, and 16, the noise gradually decreases and the image becomes smoother. At 64 samples, the image looks reasonably clean, and at 1024 samples, the noise is almost completely eliminated. This demonstrates the fundamental trade-off in Monte Carlo rendering: more samples lead to better quality but also increase rendering time proportionally. The goal is to find a balance between quality and performance, which is exactly what adaptive sampling (Part 5) aims to optimize.
+	</p>
+	
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_samples_1.png" width="300px"/>
+			  <figcaption>1 sample per pixel</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_samples_2.png" width="300px"/>
+			  <figcaption>2 samples per pixel</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_samples_4.png" width="300px"/>
+			  <figcaption>4 samples per pixel</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_samples_8.png" width="300px"/>
+			  <figcaption>8 samples per pixel</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_samples_16.png" width="300px"/>
+			  <figcaption>16 samples per pixel</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_samples_64.png" width="300px"/>
+			  <figcaption>64 samples per pixel</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part4/CBbunny_samples_1024.png" width="300px"/>
+			  <figcaption>1024 samples per pixel</figcaption>
+			</td>
+			<td style="text-align: center;">
+			</td>
+			<td style="text-align: center;">
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
 
-		<h2>Part 5: Adaptive Sampling</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+	<h2>Part 5: Adaptive Sampling</h2>
+	
+	<h3>Adaptive sampling implementation</h3>
+	
+	<ul>
+	  <li>
+		<strong>Background:</strong> In the previous parts, we used a fixed number of samples per pixel (e.g., 1024 samples). However, not all pixels require the same number of samples to converge. Some regions of the image (like smooth surfaces or constant-color areas) converge quickly with few samples, while other regions (like complex lighting boundaries or high-frequency details) need many more samples to reduce noise. Adaptive sampling optimizes rendering by detecting when a pixel has converged and stopping early, thus saving computation time without sacrificing image quality.
+	  </li>
+	  <li>
+		<strong>High-level idea:</strong> The core idea is to track the variance of the samples taken so far for each pixel. Periodically (every <code>samplesPerBatch</code> samples), we compute a confidence interval. If the interval is tight enough (i.e., <code>I <= maxTolerance * mean</code>), we consider the pixel converged and stop sampling early. Otherwise, we continue sampling up to <code>num_samples</code>. This is implemented in <code>raytrace_pixel()</code> by maintaining running statistics <code>s1</code> and <code>s2</code> to compute the sample mean and variance on the fly.
+	  </li>
+	  <li>
+		<strong>Low-level implementation:</strong>
+		<ol>
+		  <li>
+			In <code>raytrace_pixel()</code>, we initialize two accumulators: <code>s1</code> for the sum of illuminance values and <code>s2</code> for the sum of squared illuminance values. For each sample, we generate a camera ray, call <code>est_radiance_global_illumination()</code> to get the radiance, and accumulate both the radiance and its illuminance (<code>radiance.illum()</code>) into <code>s1</code> and <code>s2</code>.
+		  </li>
+		  <li>
+			Every <code>samplesPerBatch</code> samples (checked using modulo), we compute the sample mean <code>mean = s1 / n</code> and sample variance <code>variance = (1.0 / (n - 1)) * (s2 - (s1 * s1) / n)</code>. From the variance, we compute the standard deviation <code>sigma = sqrt(variance)</code>, and then the 95% confidence interval half-width <code>I = 1.96 * sigma / sqrt(n)</code>.
+		  </li>
+		  <li>
+			If <code>I <= maxTolerance * mean</code>, the pixel has converged, and we break out of the sampling loop early, recording the actual number of samples used in <code>sampleCountBuffer</code>. Otherwise, we continue sampling. This way, pixels that converge quickly use fewer samples, while challenging pixels get the full budget. The result is both faster rendering and a more efficient use of computational resources.
+		  </li>
+		  <li>
+			One tricky detail is handling the variance calculation carefully to avoid numerical issues. We use the formula <code>variance = (1.0 / (n - 1)) * (s2 - (s1 * s1) / n)</code> to compute variance in a numerically stable way. Also, we only start checking for convergence after at least <code>samplesPerBatch</code> samples have been taken, ensuring we have enough data for a meaningful estimate.
+		  </li>
+		</ol>
+	  </li>
+	</ul>
+	
+	<h3>Adaptive sampling results</h3>
+	
+	<p>
+	  Below are the rendered images and the corresponding sampling rate visualizations for CBbunny.dae and CBspheres_lambertian.dae using adaptive sampling. The sampling rate images show which pixels converged early (darker/blue regions needed fewer samples) and which pixels required the full sampling budget (lighter/red regions needed more samples). As expected, smooth regions like the walls converge quickly with relatively few samples, while complex areas like the bunny's surface, sphere boundaries, and shadow regions require more samples due to higher variance. The sampling rate visualization clearly demonstrates how adaptive sampling intelligently allocates computational resources where they are most needed, achieving high-quality results more efficiently than uniform sampling.
+	</p>
+	
+	<div style="display: flex; flex-direction: column; align-items: center;">
+		<table style="width: 100%; text-align: center; border-collapse: collapse;">
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part5/bunny.png" width="400px"/>
+			  <figcaption>CBbunny with adaptive sampling</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part5/bunny_rate.png" width="400px"/>
+			  <figcaption>CBbunny sampling rate visualization</figcaption>
+			</td>
+		  </tr>
+		  <tr>
+			<td style="text-align: center;">
+			  <img src="pics/part5/CBspheres_lamb.png" width="400px"/>
+			  <figcaption>CBspheres_lambertian with adaptive sampling</figcaption>
+			</td>
+			<td style="text-align: center;">
+			  <img src="pics/part5/CBspheres_lamb_rate.png" width="400px"/>
+			  <figcaption>CBspheres_lambertian sampling rate visualization</figcaption>
+			</td>
+		  </tr>
+		</table>
+	</div>
+	<br>
 
-		<h2>(Optional) Part 6: Extra Credit Opportunities</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-		
-		<h2>Additional Notes (please remove)</h2>
-		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
-		</ul>
+	<h2>Additional Notes: LLM Disclosure</h2>
+	We used Cursor IDE during development, so autocomplete was occasionally applied. We also used an LLM to refine the wording in this write-up. However, the student completed the homework independently without using prior homework solutions or online resources. The student is responsible for all submitted code and write-up content.
 		</div>
 	</body>
 </html>
