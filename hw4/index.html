@@ -195,6 +195,28 @@
 
 		<p>Because the cells are chosen to be a few times larger than the primitive spacing, most true collisions land in the same bucket, while most far-away pairs hash to different buckets, giving us roughly O(n) behavior in practice.</p>
 
+		<h3>Default parameters</h3>
+		<p>Below are screenshots showing the cloth falling and folding on itself over time under the default parameters (<code>ks = 5000</code>, <code>density = 15</code>). From left to right: an early frame right as the cloth starts to self-collide, a mid frame with active folding on itself, and the final rest state.</p>
+
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+			  <tr>
+				<td style="text-align: center;">
+				  <img src="pics/part4_self_collision_early.png" width="250px"/>
+				  <figcaption>(a) Early:<br/>initial self-collision.</figcaption>
+				</td>
+				<td style="text-align: center;">
+				  <img src="pics/part4_self_collision_mid.png" width="250px"/>
+				  <figcaption>(b) Mid:<br/>cloth folding on itself.</figcaption>
+				</td>
+				<td style="text-align: center;">
+				  <img src="pics/part4_self_collision_rest.png" width="250px"/>
+				  <figcaption>(c) Rest:<br/>cloth settled.</figcaption>
+				</td>
+			  </tr>
+			</table>
+		</div>
+
 		<h3>Self-collision progression at varying ks (3×3 grid)</h3>
 		<p>Below is a 3×3 grid showing how the cloth falls and folds on itself over time under three different spring constants. Each row is a time step (early, mid, rest) and each column corresponds to one <code>ks</code> setting: default (5000), low (500), and high (50000). With a low <code>ks</code>, the cloth has little resistance to bending, so it collapses into many small, tight creases. With the default <code>ks</code>, the folds are moderate and evenly spaced. With a high <code>ks</code>, the cloth is stiffer and produces broader, smoother folds with fewer creases.</p>
 
